@@ -63,7 +63,93 @@ def findContours(contours, threshold=100):  # -> cv2.typing.MatLike:
             
             if len(approx) >= 12:
                 return approx
+
+def c0(img1, img2): # compare two circuit board 
+    val_blur = 3
     
+    gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+    gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+    
+    # blurring to remove noise
+    gray1 = cv2.GaussianBlur(gray1, (val_blur, val_blur), 0)
+    gray2 = cv2.GaussianBlur(gray2, (val_blur, val_blur), 0)
+
+    # extract edge by canny
+    edge1 = cv2.Canny(gray1, 100, 200)
+    edge2 = cv2.Canny(gray2, 100, 200)
+
+    # draw edge1 on img1,2 by red color
+    edge1_colored = cv2.cvtColor(edge1, cv2.COLOR_GRAY2BGR)
+    edge1_colored[np.where((edge1_colored == [255, 255, 255]).all(axis=2))] = [0, 0, 255]
+    img1 = cv2.addWeighted(img1, 1, edge1_colored, 1, 0)
+    img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+
+    edge2_colored = cv2.cvtColor(edge2, cv2.COLOR_GRAY2BGR)
+    edge2_colored[np.where((edge2_colored == [255, 255, 255]).all(axis=2))] = [0, 0, 255]
+    img2 = cv2.addWeighted(img2, 1, edge2_colored, 1, 0)
+    img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
+
+    # draw img by plt
+    plt.figure(figsize=(10, 10))
+    plt.subplot(231)
+    plt.imshow(img1)
+    plt.subplot(232)
+    plt.imshow(gray1, cmap='gray')
+    plt.subplot(233)
+    plt.imshow(edge1, cmap='gray')
+
+    plt.subplot(234)
+    plt.imshow(img2)
+    plt.subplot(235)
+    plt.imshow(gray2, cmap='gray')
+    plt.subplot(236)
+    plt.imshow(edge2, cmap='gray')
+    plt.tight_layout()
+    plt.show()
+
+def c0_1(img1, img2): # to compare feature of two image
+    gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+    gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+
+    # extract feature from image with threshold 
+    sift = cv2.SIFT_create(contrastThreshold=0.12, edgeThreshold=2)
+    kp1, des1 = sift.detectAndCompute(gray1, None)
+    kp2, des2 = sift.detectAndCompute(gray2, None)
+
+    # draw feature on image
+    img1 = cv2.drawKeypoints(img1, kp1, None, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    img2 = cv2.drawKeypoints(img2, kp2, None, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+
+    # compare img1 and img2 feature
+    bf = cv2.BFMatcher()
+    matches = bf.knnMatch(des1, des2, k=2)
+    good = []
+    for m, n in matches:
+        if m.distance < 0.75 * n.distance:
+            good.append([m])
+
+    # draw compare result by plt
+    img3 = cv2.drawMatchesKnn(img1, kp1, img2, kp2, good, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    plt.figure(figsize=(10, 10))
+    plt.subplot(131)
+    plt.imshow(img1)
+    plt.subplot(132)
+    plt.imshow(img2)
+    plt.subplot(133)
+    plt.imshow(img3)
+    plt.show()
+
+
+    # draw img by plt
+    # plt.figure(figsize=(10, 10))
+    # plt.subplot(121)
+    # plt.imshow(img1)
+    # plt.subplot(122)
+    # plt.imshow(img2)
+    # plt.tight_layout()
+    # plt.show()
+
 def c1(img1, img2, img3 ,img4): # draw_edge'
     val_blur = 5
     
@@ -141,20 +227,25 @@ def main():
     # 1
     img1 = cv2.imread("./assets/images/sample1.jpg")
     img2 = cv2.imread("./assets/images/sample2.jpg")
-    img3 = cv2.imread("./assets/images/sample3.jpg")
-    img4 = cv2.imread("./assets/images/sample4.jpg")
+    # img3 = cv2.imread("./assets/images/sample3.jpg")
+    # img4 = cv2.imread("./assets/images/sample4.jpg")
     
     # resize img to 400x400
     img1 = cv2.resize(img1, (img1.shape[1]//8, img1.shape[0]//8))
     img2 = cv2.resize(img2, (img2.shape[1]//8, img2.shape[0]//8))
-    img3 = cv2.resize(img3, (img3.shape[1]//8, img3.shape[0]//8))
-    img4 = cv2.resize(img4, (img4.shape[1]//8, img4.shape[0]//8))
+    # img3 = cv2.resize(img3, (img3.shape[1]//8, img3.shape[0]//8))
+    # img4 = cv2.resize(img4, (img4.shape[1]//8, img4.shape[0]//8))
 
 
     # draw_img(img1, img2, img3, img4)
     # draw_edge(img1, img2, img3, img4)
     # draw_sifted(img1, img2, img3, img4)
-    c1(img1, img2, img3, img4)
+    
+    
+    # c0(img1, img2)
+    c0_1(img1, img2) # => result: smd 저항 같은 작은 부품들 식별하기에 해상도가 너무 낮음. 작은 부품 삽입된 부분 사진 필요할 듯, 
+
+    # c1(img1, img2, img3, img4)
     
     
    
