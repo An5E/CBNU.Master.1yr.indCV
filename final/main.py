@@ -202,6 +202,254 @@ def c1(img1, img2, img3 ,img4): # draw_edge'
     plt.tight_layout()
     plt.show()
     
+def stitch1(showplt: bool = False, saveimg: bool = False) -> cv2.typing.MatLike:
+    # read img
+    img1 = cv2.imread("./assets/images/stitch/sample-part1.jpg")
+    img2 = cv2.imread("./assets/images/stitch/sample-part2.jpg")
+    img3 = cv2.imread("./assets/images/stitch/sample-part3.jpg")
+    img4 = cv2.imread("./assets/images/stitch/sample-part4.jpg")
+    img5 = cv2.imread("./assets/images/stitch/sample-part5.jpg")
+    img6 = cv2.imread("./assets/images/stitch/sample-part6.jpg")
+    
+    # image stitching
+    stitcher = cv2.Stitcher_create()
+    (status, stitched) = stitcher.stitch([img1, img2, img3, img4, img5, img6])
+    
+    # stitched = cv2.cvtColor(stitched, cv2.COLOR_BGR2RGB)
+    
+    # draw img by plt
+    plt.figure(figsize=(10, 10))
+    # plt.subplot(151)
+    # plt.imshow(img1)
+    # plt.subplot(152)
+    # plt.imshow(img2)
+    # plt.subplot(153)
+    # plt.imshow(img3)
+    # plt.subplot(154)
+    # plt.imshow(img4)
+    plt.subplot(111)
+    plt.imshow(stitched)
+    
+    plt.tight_layout()
+        
+    if saveimg:
+        plt.axis('off')
+        plt.savefig("./assets/images/stitch/pcb-stitching.png", bbox_inches='tight', pad_inches=0.0)
+    else:
+        plt.title("PCB stitching with 6 parts")
+    
+    if showplt:
+        plt.show()
+        
+        
+    
+    return stitched
+
+def feature1(img1):
+    # copy img1 to img2
+    img2 = img1.copy()
+    
+    # img1 = cv2.imread("./assets/images/stitch/sample-part1.jpg")
+    # img2 = cv2.imread("./assets/images/stitch/sample-part1.jpg")
+    
+    # extract features from images and matching
+    
+    sift = cv2.SIFT_create(contrastThreshold=0.15)
+    kp1, des1 = sift.detectAndCompute(img1, None)
+    kp2, des2 = sift.detectAndCompute(img2, None)
+    
+    bf = cv2.BFMatcher()
+    matches = bf.knnMatch(des1, des2, k=2)
+    
+    good_matches = []
+    for m, n in matches:
+        if m.distance < 0.75 * n.distance:
+            good_matches.append(m)
+            
+    # draw results
+    img3 = cv2.drawMatches(img1, kp1, img2, kp2, good_matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    plt.figure(figsize=(10, 10))
+    plt.imshow(img3)
+    plt.show()
+
+def stroke1(img1):    
+    img = img1.copy()
+    
+    # ! for DEBUG
+    # draw rect on img
+    pts1 = np.array([[0,0],[100,100],[100,0]],dtype=np.int32)
+    pts2 = np.array([[0,0],[200,200],[200,0]],dtype=np.int32)
+    cv2.polylines(img,[pts1,pts2], True,(255,0,0),2)
+    
+    
+    # edge detection
+    edge1 = cv2.Canny(img1, 100, 100)
+    
+    # contour detection
+    contours, _ = cv2.findContours(edge1, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # filter contours by edges
+    for contour in contours:
+        if cv2.contourArea(contour) < 1:
+            cv2.drawContours(edge1, [contour], -1, (0, 0, 0), -1)
+    
+    
+    
+    # add draw rectangle function via mouse event callback
+    x1, y1 = -1,-1
+    clicked = False
+    
+    def draw_rectangle(event, x, y, flags, param):
+        global x1, y1, clicked
+        
+        if event == cv2.EVENT_LBUTTONDOWN:
+            clicked = True
+            x1, y1 = x, y
+            # cv2.imshow("orig",img)
+        elif event == cv2.EVENT_MOUSEMOVE:
+            if clicked:
+                cv2.rectangle(img, (x1, y1), (x, y), (0, 255, 0), 2)
+                # x1,y1 = x,y
+        elif event == cv2.EVENT_LBUTTONUP:
+            clicked = False
+            cv2.rectangle(img, (x1, y1), (x, y), (0, 255, 0), 2)
+            
+        print(clicked)
+    
+    cv2.namedWindow("orig")
+    cv2.setMouseCallback("orig", draw_rectangle)
+    
+    while True:
+        cv2.imshow("orig",img)
+        
+        if cv2.waitKey(20) & 0xFF == 27:
+            break
+        
+    cv2.destroyAllWindows()
+    
+    # draw edge by plt
+    # plt.figure(figsize=(10, 10))
+    # plt.subplot(121)
+    # plt.imshow(edge1)
+    # plt.subplot(122)
+    # plt.title("test")
+    # plt.imshow(img)
+    # plt.tight_layout()
+    # plt.show()
+    
+    
+    
+    # draw edge by plt
+    # plt.figure(figsize=(10, 10))
+    # plt.subplot(121)
+    # plt.imshow(edge1)
+    # plt.subplot(122)
+    # plt.title("test")
+    # plt.imshow(img)
+    # plt.tight_layout()
+    # plt.show()
+    
+def dcheck1(img): # PCB 방향 인식
+    img_reversed = [cv2.rotate(img, cv2.ROTATE_180), cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE), cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)]
+    
+    # identify image direction by feature matching
+    
+    # extract features from images and matching
+    
+    sift = cv2.SIFT_create(contrastThreshold=0.2)
+    kp1, des1 = sift.detectAndCompute(img, None)
+    
+    bf = cv2.BFMatcher()
+    
+    # kp2, des2 is Array of keypoints and descriptors
+    
+    
+    matches = []
+    kp2, des2 = [],[]
+    for ir in img_reversed:
+        kp, des = sift.detectAndCompute(ir, None)
+        match = bf.knnMatch(des1, des, k=2)
+        matches.append(match)
+        
+        kp2.append(kp)
+        des2.append(des)
+    
+        # compare kp1, des1 and kp2, des2 features
+        
+    good_matches = [[], [], []]
+    for i, match in enumerate(matches):
+        # good_matches = []
+        for m, n in match:
+            if m.distance < 0.75 * n.distance:
+                good_matches[i].append(m)
+    
+    
+    def chkmtd(_kp2, _gm) -> int:
+        src_pts = np.float32([ kp1[m.queryIdx].pt for m in _gm ]).reshape(-1,1,2)
+        dst_pts = np.float32([ _kp2[m.trainIdx].pt for m in _gm ]).reshape(-1,1,2)
+        
+        M,inliers = cv2.estimateAffine2D(src_pts, dst_pts, method=cv2.RANSAC)
+        
+        if M is not None:
+            cos_theta = M[0, 0]
+            sin_theta = M[0, 1]
+            
+            angle_rad = np.arctan2(sin_theta, cos_theta)
+            angle_deg = np.degrees(angle_rad)
+            
+            return np.round(angle_deg).astype(int)
+    
+    img3 = cv2.drawMatches(img, kp1, img_reversed[0], kp2[0], good_matches[0], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    # draw results    
+    img4 = cv2.drawMatches(img, kp1, img_reversed[1], kp2[1], good_matches[1], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    img5 = cv2.drawMatches(img, kp1, img_reversed[2], kp2[2], good_matches[2], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    
+    print(chkmtd(kp2[0], good_matches[0]), chkmtd(kp2[1], good_matches[1]), chkmtd(kp2[2], good_matches[2]))
+    
+    mat3 = cv2.getRotationMatrix2D((img_reversed[0].shape[1]/2, img_reversed[0].shape[0]/2), chkmtd(kp2[0], good_matches[0]), 1)
+    mat4 = cv2.getRotationMatrix2D((img_reversed[1].shape[1]/2, img_reversed[1].shape[0]/2), chkmtd(kp2[1], good_matches[1]), 1)
+    mat5 = cv2.getRotationMatrix2D((img_reversed[2].shape[1]/2, img_reversed[2].shape[0]/2), chkmtd(kp2[2], good_matches[2]), 1)
+    
+    img3_corr = cv2.warpAffine(img_reversed[0], mat3, (img_reversed[0].shape[1], img_reversed[0].shape[0]))
+    img4_corr = cv2.warpAffine(img_reversed[1], mat4, (img_reversed[1].shape[1], img_reversed[1].shape[0]) )
+    img5_corr = cv2.warpAffine(img_reversed[2], mat5, (img_reversed[2].shape[1], img_reversed[2].shape[0]))
+        
+    
+    
+    plt.figure(figsize=(10, 10))
+    plt.subplot(231)
+    plt.imshow(img3)
+    plt.subplot(232)
+    plt.imshow(img4)
+    plt.subplot(233)
+    plt.imshow(img5)
+    
+    plt.subplot(234)
+    plt.imshow(img3_corr)
+    plt.subplot(235)
+    plt.imshow(img4_corr)
+    plt.subplot(236)
+    plt.imshow(img5_corr)
+    
+    plt.show()
+        
+    
+    
+    
+    
+    # plt.figure(figsize=(20,5))
+    # plt.subplot(141)
+    # plt.imshow(img)
+    # plt.subplot(142)
+    # plt.imshow(img_reversed1)
+    # plt.subplot(143)
+    # plt.imshow(img_reversed2)
+    # plt.subplot(144)
+    # plt.imshow(img_reversed3)
+    # plt.show()
+    
+    
+    
 def draw_sifted(img1, img2, img3, img4):
     # extract feature by SIFT
     sift = cv2.SIFT_create()
@@ -243,7 +491,22 @@ def main():
     
     
     # c0(img1, img2)
-    c0_1(img1, img2) # => result: smd 저항 같은 작은 부품들 식별하기에 해상도가 너무 낮음. 작은 부품 삽입된 부분 사진 필요할 듯, 
+    
+
+    # ? --- TESTING --- 
+    # c0_1(img1, img2) # => result: smd 저항 같은 작은 부품들 식별하기에 해상도가 너무 낮음. 작은 부품 삽입된 부분 사진 필요할 듯, 
+    
+    # * ALGORITHM 2: FEATURE MATCHING
+    # feature1(stitched)
+    # * ALGORITHM 3: PARTS DETECTION AND STROKE
+    stitched = cv2.imread("./assets/images/stitch/pcb-stitching.png")
+    # stroke1(stitched)
+    
+    dcheck1(stitched) # 
+    
+    # ! --- DONE ---    
+    # * ALGORITHM 1: IMAGE STITCHING
+    # stitched = stitch1(True)
 
     # c1(img1, img2, img3, img4)
     
