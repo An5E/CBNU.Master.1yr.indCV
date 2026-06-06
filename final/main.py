@@ -64,194 +64,44 @@ def findContours(contours, threshold=100):  # -> cv2.typing.MatLike:
             if len(approx) >= 12:
                 return approx
 
-def c0(img1, img2): # compare two circuit board 
-    val_blur = 3
-    
-    gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-    gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-    
-    # blurring to remove noise
-    gray1 = cv2.GaussianBlur(gray1, (val_blur, val_blur), 0)
-    gray2 = cv2.GaussianBlur(gray2, (val_blur, val_blur), 0)
-
-    # extract edge by canny
-    edge1 = cv2.Canny(gray1, 100, 200)
-    edge2 = cv2.Canny(gray2, 100, 200)
-
-    # draw edge1 on img1,2 by red color
-    edge1_colored = cv2.cvtColor(edge1, cv2.COLOR_GRAY2BGR)
-    edge1_colored[np.where((edge1_colored == [255, 255, 255]).all(axis=2))] = [0, 0, 255]
-    img1 = cv2.addWeighted(img1, 1, edge1_colored, 1, 0)
-    img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
-
-    edge2_colored = cv2.cvtColor(edge2, cv2.COLOR_GRAY2BGR)
-    edge2_colored[np.where((edge2_colored == [255, 255, 255]).all(axis=2))] = [0, 0, 255]
-    img2 = cv2.addWeighted(img2, 1, edge2_colored, 1, 0)
-    img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
-
-    # draw img by plt
-    plt.figure(figsize=(10, 10))
-    plt.subplot(231)
-    plt.imshow(img1)
-    plt.subplot(232)
-    plt.imshow(gray1, cmap='gray')
-    plt.subplot(233)
-    plt.imshow(edge1, cmap='gray')
-
-    plt.subplot(234)
-    plt.imshow(img2)
-    plt.subplot(235)
-    plt.imshow(gray2, cmap='gray')
-    plt.subplot(236)
-    plt.imshow(edge2, cmap='gray')
-    plt.tight_layout()
-    plt.show()
-
-def c0_1(img1, img2): # to compare feature of two image
-    gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-    gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-
-    # extract feature from image with threshold 
-    sift = cv2.SIFT_create(contrastThreshold=0.12, edgeThreshold=2)
-    kp1, des1 = sift.detectAndCompute(gray1, None)
-    kp2, des2 = sift.detectAndCompute(gray2, None)
-
-    # draw feature on image
-    img1 = cv2.drawKeypoints(img1, kp1, None, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    img2 = cv2.drawKeypoints(img2, kp2, None, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-
-
-    # compare img1 and img2 feature
-    bf = cv2.BFMatcher()
-    matches = bf.knnMatch(des1, des2, k=2)
-    good = []
-    for m, n in matches:
-        if m.distance < 0.75 * n.distance:
-            good.append([m])
-
-    # draw compare result by plt
-    img3 = cv2.drawMatchesKnn(img1, kp1, img2, kp2, good, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-    plt.figure(figsize=(10, 10))
-    plt.subplot(131)
-    plt.imshow(img1)
-    plt.subplot(132)
-    plt.imshow(img2)
-    plt.subplot(133)
-    plt.imshow(img3)
-    plt.show()
-
-
-    # draw img by plt
-    # plt.figure(figsize=(10, 10))
-    # plt.subplot(121)
-    # plt.imshow(img1)
-    # plt.subplot(122)
-    # plt.imshow(img2)
-    # plt.tight_layout()
-    # plt.show()
-
-def c1(img1, img2, img3 ,img4): # draw_edge'
-    val_blur = 5
-    
-    gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-    gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-    gray3 = cv2.cvtColor(img3, cv2.COLOR_BGR2GRAY)
-    gray4 = cv2.cvtColor(img4, cv2.COLOR_BGR2GRAY)
-    
-    # blurring to remove noise
-    gray1 = cv2.GaussianBlur(gray1, (val_blur, val_blur), 0)
-    gray2 = cv2.GaussianBlur(gray2, (val_blur, val_blur), 0)
-    gray3 = cv2.GaussianBlur(gray3, (val_blur, val_blur), 0)
-    gray4 = cv2.GaussianBlur(gray4, (val_blur, val_blur), 0)
-
-    # extract edge by canny
-    edge1 = cv2.Canny(gray1, 100, 200)
-    edge2 = cv2.Canny(gray2, 100, 200)
-    edge3 = cv2.Canny(gray3, 100, 200)
-    edge4 = cv2.Canny(gray4, 100, 200)
-    
-    contours1, _ = cv2.findContours(edge1, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours2, _ = cv2.findContours(edge2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours3, _ = cv2.findContours(edge3, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours4, _ = cv2.findContours(edge4, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-
-
-    pcb_contour = findContours(contours1,10)
-    
-    if pcb_contour is None:
-        print("# cannot find pcb contour")
-        return
-    
-    # draw pcb_contour
-    print(pcb_contour)
-    edge1 = cv2.drawContours(edge1, [pcb_contour], -1, (255, 0, 0), 2)
-    
-    # edge1 = cv2.drawContours(edge1, [pcb_contour], -1, (255, 0, 0), 2)
-
-    # draw img by plt
-    plt.figure(figsize=(10, 10))
-    plt.subplot(221)
-    plt.imshow(edge1)
-    plt.subplot(222)
-    plt.imshow(edge2, cmap='gray')
-    plt.subplot(223)
-    plt.imshow(edge3, cmap='gray')
-    plt.subplot(224)
-    plt.imshow(edge4, cmap='gray')
-    plt.tight_layout()
-    plt.show()
-
-def detectPCBandZoom(src, showPlt=False) -> cv2.typing.MatLike: # PCB 외형 검출
+def detectPCBandZoom(src, drawContour=False, showPlt=False) -> cv2.typing.MatLike: # PCB 외형 검출
 
     # detect big components on pcb
-    img1 = cv2.cvtColor(src, cv2.COLOR_RGB2GRAY)
     
-    # # mask color
-    # lower = np.array([0, 0, 0], dtype=np.uint8)
-    # upper = np.array([0, 255, 255], dtype=np.uint8)
-    
-    # img2 = cv2.GaussianBlur(img1, (1,1), 0)
     
     def mtd2(img):
         # detect big components on pcb
-        # img21 = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        img21 = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         
-        img22 = cv2.GaussianBlur(img, (5,5), 0)
-        
-        # ! test
-        # for i in range(20):
-        #     img31 = cv2.inRange(img21, 70+(i), 100+(i*2))
-        #     cv2.imshow(f"img31 , {i}",img31)
+        img22 = cv2.GaussianBlur(img21, (5,5), 0)
         
         img23 = cv2.inRange(img22, 70, 120)
         
         img231 = cv2.inRange(img22, 100, 220)
         
-        img23 = cv2.bitwise_and(img23, img231)
-        cv2.imshow(f"mtd2:img231",img231)  
+        img232 = cv2.bitwise_and(img23, img231)
+
+        # cv2.imshow(f"mtd2:img23 (before)",img23)
+        # cv2.imshow(f"mtd2:img231",img231)  
+        # cv2.imshow(f"mtd2:img232 (after)",img232)
         
-        img24 = cv2.Canny(img23, 120, 200)
-    
-        
+        img24 = cv2.Canny(img23, 100, 200)
         
         mp_kernel = np.ones((21,21), np.uint8)
         img241 = cv2.morphologyEx(img24, cv2.MORPH_CLOSE, kernel=mp_kernel)
         
-        cv2.imshow(f"mtd2:img241",img241)    
-        
-        
+        # cv2.imshow(f"mtd2:img241",img241)    
         
         # find contours
         contours2, _ = cv2.findContours(img241, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
-        cv2.imshow(f"mtd2:img24",img24)
+        # cv2.imshow(f"mtd2:img24",img24)
         pcb_contour2 = None
         for c in contours2:
             
             ca = cv2.contourArea(c)
             
-            if ca >= 1000:
+            if ca >= 10000:
             
                 peri = cv2.arcLength(c, True)
                 approx = cv2.approxPolyDP(c, 0.0001 * peri, False)
@@ -262,30 +112,31 @@ def detectPCBandZoom(src, showPlt=False) -> cv2.typing.MatLike: # PCB 외형 검
     
     
         # draw contours
-        img1_cp = img.copy()
-        # img31 = cv2.drawContours(img1_cp, contours2, -1, (255, 0, 0), 1)
+        # img251 = cv2.drawContours(img1_cp, contours2, -1, (255, 0, 0), 1)
+        # cv2.imshow(f"mtd2:img251",img251)
         
-        img25 = cv2.drawContours(img1_cp, [pcb_contour2], -1, (255, 0, 0), 2)    
+        img25 = cv2.drawContours(img.copy(), [pcb_contour2], -1, (255, 0, 0), 2)    
         # cv2.imshow(f"mtd2:img25",img25) # PCB 영역 식별
+        
         
         # PCB 식별 영역 확대
         # print(pcb_contour2)
         
         x,y,w,h = cv2.boundingRect(pcb_contour2)
         
-        cv2.imshow("mtd2:img25'",img1_cp[y:y+h, x:x+w])
+        # cv2.imshow("mtd2:img25'",img1_cp[y:y+h, x:x+w])
         # img26 = cv2.resize()
     
-        return img25, img1_cp[y:y+h, x:x+w]
+        return img25, img[y:y+h, x:x+w], pcb_contour2
     
-    img21, img22 = mtd2(img1)
+    img21, img22, contours = mtd2(src)
     
     if showPlt:
     
         plt.figure(figsize=(10,5))
         plt.subplot(131)
         plt.title("original")
-        plt.imshow(img1)
+        plt.imshow(src)
         
         plt.subplot(132)
         plt.title("processed#2-1")
@@ -296,41 +147,90 @@ def detectPCBandZoom(src, showPlt=False) -> cv2.typing.MatLike: # PCB 외형 검
         plt.imshow(img22)
         
         plt.show()
+    
+    img22 = cv2.cvtColor(img22, cv2.COLOR_BGR2RGB)
         
-    return img22
+    return img22, contours
 
-def detectBigComponents():
-    img1 = cv2.imread("./assets/images/pcb-stitching1.png")
+def detectBigComponents(src1, src2):
+    img1 = src1[0]
+    img2 = src2[0]
+    
+    ctr1 = src1[1]
+    ctr2 = src2[1]
+    
     
     # detect big components on pcb
-    img2 = cv2.cvtColor(img1, cv2.COLOR_RGB2GRAY)
-    
-    # blur
-    blurFactor = 3
-    
-    img2 = cv2.GaussianBlur(img2, (blurFactor,blurFactor), 0)
-    
-    # detect edge
-    img2 = cv2.Canny(img2, 100, 200)
-    
-    # find contours
-    contours, _ = cv2.findContours(img2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    # draw contours
-    img2 = cv2.drawContours(img2, contours, -1, (255, 0, 0), 2)
+    img11 = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)
+    img21 = cv2.cvtColor(img2, cv2.COLOR_BGR2HSV)
     
     
-    plt.figure(figsize=(10,5))
-    plt.subplot(131)
-    plt.title("original")
-    plt.imshow(img1)
-    plt.subplot(132)
-    plt.title("processed#1")
-    plt.imshow(img2)
+    # inrange ( dark components )
+    thres2 = 65
     
-    plt.show()
+    thres1 = ([0,0,0],[255,255,255])
     
-    pass 
+    mask1 = cv2.inRange(img11, np.array([0,0,0]),np.array([255,90,90])) # dark components
+    mask2 = cv2.inRange(img11, np.array([3,3,210]),np.array([255,255,255])) 
+    mask3 = cv2.inRange(img11, np.array([0,0,150]),np.array([255,90,255])) # bright components
+    
+    mask_ctr1 = np.zeros(img1.shape, dtype=np.uint8)
+    
+    x,y,w,h = cv2.boundingRect(ctr1)
+    
+    ctr11 = ctr1.reshape(-1,4)-[x,y,x,y]
+    ctr12 = ctr11.reshape(-1,2)
+    
+    cv2.fillPoly(mask_ctr1, [np.array([ctr12],dtype=np.int32)], 255)
+    cv2.imshow("mask_ctr1",mask_ctr1)
+    
+    # mask31 = cv2.bitwise_and(ctr2, mask3)
+    # cv2.imshow("mask31",mask31)
+    
+    # comp1 = cv2.bitwise_or(mask1, mask3)
+    comp1 = cv2.bitwise_or(mask1, mask3)
+    
+    
+    # for i in range(10):
+        # img12 = cv2.inRange(img11, 5, thres2+i)
+        # img22 = cv2.inRange(img21, 5, thres2+i)
+        
+        # cv2.imshow(f"img12, {i}",img12)
+        # cv2.imshow(f"img22, {i}",img22)
+    cv2.imshow("original",img1)
+    cv2.imshow("mask1 (black)",mask1)
+    cv2.imshow("mask2",mask2)
+    cv2.imshow("mask3",mask3)
+    cv2.imshow("comp1",comp1)
+    
+    
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
+    # # blur
+    # blurFactor = 3
+    
+    # img2 = cv2.GaussianBlur(img2, (blurFactor,blurFactor), 0)
+    
+    # # detect edge
+    # img2 = cv2.Canny(img2, 100, 200)
+    
+    # # find contours
+    # contours, _ = cv2.findContours(img2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # # draw contours
+    # img2 = cv2.drawContours(img2, contours, -1, (255, 0, 0), 2)
+    
+    
+    # plt.figure(figsize=(10,5))
+    # plt.subplot(131)
+    # plt.title("original")
+    # plt.imshow(img1)
+    # plt.subplot(132)
+    # plt.title("processed#1")
+    # plt.imshow(img2)
+    
+    # plt.show()
 
 def detectSmallComponents():
     pass
@@ -420,12 +320,12 @@ def stitch1(showplt: bool = False, saveimg: bool = False) -> cv2.typing.MatLike:
     
     return stitched
 
-def feature1():
+def feature1(src1, src2):
     # copy img1 to img2
     # img2 = img1.copy()
     
-    img1 = cv2.imread("./assets/images/pcb-stitching1.png")
-    img2 = cv2.imread("./assets/images/pcb-stitching2.png")
+    img1 = src1 # cv2.imread("./assets/images/pcb-stitching1.png")
+    img2 = src2 # cv2.imread("./assets/images/pcb-stitching2.png")
     
     # img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
     # img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
@@ -435,6 +335,20 @@ def feature1():
     sift = cv2.SIFT_create(contrastThreshold=0.12, edgeThreshold=2)
     kp1, des1 = sift.detectAndCompute(img1, None)
     kp2, des2 = sift.detectAndCompute(img2, None)
+    
+    print(kp1[0].pt)
+    
+    for _kp in kp1:
+        cv2.circle(img1, (int(_kp.pt[0]), int(_kp.pt[1])), 5, (255, 0, 0), 2)
+    # for kp in kp2:
+    #     cv2.circle(img2, (kp.pt[0], kp.pt[1]), 5, (255, 0, 0), 2)
+    
+    # plt.figure(figsize=(10, 10))
+    # plt.subplot(121)
+    # plt.imshow(img1)
+    # plt.subplot(122)
+    # plt.imshow(img2)
+    # plt.show()
     
     bf = cv2.BFMatcher()
     matches = bf.knnMatch(des1, des2, k=2)
@@ -674,27 +588,17 @@ def main():
     # ? --- TESTING --- 
     # c0_1(img1, img2) # => result: smd 저항 같은 작은 부품들 식별하기에 해상도가 너무 낮음. 작은 부품 삽입된 부분 사진 필요할 듯, 
     
-    # * DETECT PCB & ZOOM
-    img1 = cv2.imread("./assets/images/pcb-stitching1.png")
-    img2 = cv2.imread("./assets/images/pcb-stitching2.png")
-    zoomed1 = detectPCBandZoom(img1) 
-    zoomed2 = detectPCBandZoom(img2,True)
-    
-    
-    plt.figure(figsize=(10,5))
-    plt.subplot(221)
-    plt.imshow(img1)
-    plt.subplot(222)
-    plt.imshow(img2)
-    plt.subplot(223)
-    plt.imshow(zoomed1)
-    plt.subplot(224)
-    plt.imshow(zoomed2)
-    plt.show()
-    
     # * DRAW CONTOUR
     # contour1()
     # detectBigComponents()
+    
+    # * ( DETECT PCB & ZOOM ) --> ( DETECT BIG COMPONENTS & FEATURE MATCHING )
+    img1 = cv2.imread("./assets/images/pcb-stitching1.png")
+    img2 = cv2.imread("./assets/images/pcb-stitching2.png")
+    zoomed1, contours1 = detectPCBandZoom(img1) 
+    zoomed2, contours2 = detectPCBandZoom(img2)
+    
+    detectBigComponents((zoomed1, contours1), (zoomed2, contours2))
     
     
     
@@ -710,6 +614,15 @@ def main():
     # ! --- DONE ---    
     # * ALGORITHM 1: IMAGE STITCHING
     # stitched = stitch1(True, True)
+    
+    # * DETECT PCB & ZOOM
+    img1 = cv2.imread("./assets/images/pcb-stitching1.png")
+    img2 = cv2.imread("./assets/images/pcb-stitching2.png")
+    zoomed1 = detectPCBandZoom(img1) 
+    zoomed2 = detectPCBandZoom(img2)
+
+    # * FEATURE MATCHING
+    # feature1(zoomed1, zoomed2)
 
     # c1(img1, img2, img3, img4)
     
