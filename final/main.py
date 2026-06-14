@@ -152,7 +152,94 @@ def detectPCBandZoom(src, drawContour=False, showPlt=False) -> cv2.typing.MatLik
         
     return img22, contours
 
-def detectBigComponents(src1, src2):
+def detectDarkComponents(src,showplt=False):
+    img = src[0]
+    
+    # detect big components on pcb
+    img11 = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    
+    
+    # inrange ( dark components )
+    mask = cv2.inRange(img11, np.array([0,0,0]),np.array([255,90,90])) # dark components
+        
+    if showplt:
+        cv2.imshow("original",img)
+        cv2.imshow("mask1 (dark)",mask)
+        
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    
+    return mask
+    
+    
+def detectBrightComponents(src, showplt=False):
+    img = src[0]
+    ctr = src[1]
+    
+    # detect big components on pcb
+    img11 = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    
+    # inrange ( dark components )
+    mask = cv2.inRange(img11, np.array([0,0,150]),np.array([255,90,255])) # bright components
+    
+    mask_ctr1 = np.zeros(img.shape, dtype=np.uint8)
+    
+    x,y,_,_ = cv2.boundingRect(ctr)
+    
+    ctr11 = ctr.reshape(-1,2)-[x,y]
+    
+    cv2.fillPoly(mask_ctr1, [np.array([ctr11],dtype=np.int32)], 255)
+    mask_ctr1 = cv2.cvtColor(mask_ctr1, cv2.COLOR_RGB2GRAY)
+    
+    comp13 = cv2.bitwise_and(mask, mask_ctr1)
+    
+    if showplt:
+        cv2.imshow("comp13 (m3&ctr1)",comp13)
+        
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    
+    return comp13
+
+def getComponentArea(src, ctr, thres=1000):
+    img = src
+    img1 = img.copy()
+    
+    # get contour area, and filter area by threshold
+    contours, _ = cv2.findContours(ctr, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    comp_area = []
+    
+    for c in contours:
+            
+            ca = cv2.contourArea(c)
+            
+            # Dark: > 1000
+            if ca > thres:
+            
+                peri = cv2.arcLength(c, False)
+                approx = cv2.approxPolyDP(c, 0.0001 * peri, False)
+                
+                comp_area.append(approx)
+    
+    for c in comp_area:
+        x,y,w,h = cv2.boundingRect(c)
+        
+        img1 = cv2.rectangle(img1, (x, y), (x+w, y+h),  (0, 0, 255), 2)
+    
+    
+    # ---
+
+    cv2.imshow("src(origin)",img)
+    cv2.imshow("img1 (draw component rect)",img1)
+    
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+    
+    
+
+# * ORIGIN CODE OF BRIGHTs, DARKs
+def detectComponents(src1, src2):
     img1 = src1[0]
     img2 = src2[0]
     
@@ -176,12 +263,14 @@ def detectBigComponents(src1, src2):
     
     mask_ctr1 = np.zeros(img1.shape, dtype=np.uint8)
     
-    x,y,w,h = cv2.boundingRect(ctr1)
+    x,y,_,_ = cv2.boundingRect(ctr1)
     
-    ctr11 = ctr1.reshape(-1,4)-[x,y,x,y]
-    ctr12 = ctr11.reshape(-1,2)
+    ctr11 = ctr1.reshape(-1,2)-[x,y]
     
-    cv2.fillPoly(mask_ctr1, [np.array([ctr12],dtype=np.int32)], 255)
+    print(ctr11)
+    
+    cv2.fillPoly(mask_ctr1, [np.array([ctr11],dtype=np.int32)], 255)
+    mask_ctr1 = cv2.cvtColor(mask_ctr1, cv2.COLOR_RGB2GRAY)
     cv2.imshow("mask_ctr1",mask_ctr1)
     
     # mask31 = cv2.bitwise_and(ctr2, mask3)
@@ -189,6 +278,8 @@ def detectBigComponents(src1, src2):
     
     # comp1 = cv2.bitwise_or(mask1, mask3)
     comp1 = cv2.bitwise_or(mask1, mask3)
+    comp13 = cv2.bitwise_and(mask3, mask_ctr1)
+    comp12 = cv2.bitwise_and(comp1, mask_ctr1) 
     
     
     # for i in range(10):
@@ -198,10 +289,15 @@ def detectBigComponents(src1, src2):
         # cv2.imshow(f"img12, {i}",img12)
         # cv2.imshow(f"img22, {i}",img22)
     cv2.imshow("original",img1)
-    cv2.imshow("mask1 (black)",mask1)
+    cv2.imshow("mask1 (dark)",mask1)
     cv2.imshow("mask2",mask2)
-    cv2.imshow("mask3",mask3)
-    cv2.imshow("comp1",comp1)
+    cv2.imshow("mask3 (bright)",mask3)
+    
+    cv2.imshow("comp1 (m1|m3)",comp1)
+    cv2.imshow("comp12 (comp1&ctr1)", comp12)
+    cv2.imshow("comp13 (m3&ctr1)",comp13)
+    
+    # cv2.imshow("comp2 (m1&mctr1)",comp2)
     
     
     cv2.waitKey(0)
@@ -441,8 +537,8 @@ def stroke1(img1):
     # plt.tight_layout()
     # plt.show()
     
-def dcheck1(img): # PCB 방향 인식
-    img_reversed = [cv2.rotate(img, cv2.ROTATE_180), cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE), cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)]
+def dcheck1(img, img2): # PCB 방향 인식
+    img_reversed = [cv2.rotate(img2, cv2.ROTATE_180), cv2.rotate(img2, cv2.ROTATE_90_CLOCKWISE), cv2.rotate(img2, cv2.ROTATE_90_COUNTERCLOCKWISE)]
     
     # identify image direction by feature matching
     
@@ -482,6 +578,8 @@ def dcheck1(img): # PCB 방향 인식
         
         M,inliers = cv2.estimateAffine2D(src_pts, dst_pts, method=cv2.RANSAC)
         
+        print(M)
+        
         if M is not None:
             cos_theta = M[0, 0]
             sin_theta = M[0, 1]
@@ -496,7 +594,7 @@ def dcheck1(img): # PCB 방향 인식
     img4 = cv2.drawMatches(img, kp1, img_reversed[1], kp2[1], good_matches[1], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
     img5 = cv2.drawMatches(img, kp1, img_reversed[2], kp2[2], good_matches[2], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
     
-    print(chkmtd(kp2[0], good_matches[0]), chkmtd(kp2[1], good_matches[1]), chkmtd(kp2[2], good_matches[2]))
+    # print(chkmtd(kp2[0], good_matches[0]), chkmtd(kp2[1], good_matches[1]), chkmtd(kp2[2], good_matches[2]))
     
     mat3 = cv2.getRotationMatrix2D((img_reversed[0].shape[1]/2, img_reversed[0].shape[0]/2), chkmtd(kp2[0], good_matches[0]), 1)
     mat4 = cv2.getRotationMatrix2D((img_reversed[1].shape[1]/2, img_reversed[1].shape[0]/2), -chkmtd(kp2[1], good_matches[1]), 1)
@@ -508,21 +606,26 @@ def dcheck1(img): # PCB 방향 인식
         
     
     
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(15, 10))
     plt.subplot(231)
     plt.imshow(img3)
+    plt.title("PCB direction (Golden : Target 180')")
     plt.subplot(232)
     plt.imshow(img4)
+    plt.title("PCB direction (Golden : Target CW 90')")
     plt.subplot(233)
     plt.imshow(img5)
+    plt.title("PCB direction (Golden : Target CCW 90')")
     
     plt.subplot(234)
     plt.imshow(img3_corr)
+    plt.title("PCB direction' (Target)")
     plt.subplot(235)
     plt.imshow(img4_corr)
     plt.subplot(236)
     plt.imshow(img5_corr)
     
+    plt.tight_layout()
     plt.show()
         
     
@@ -592,13 +695,36 @@ def main():
     # contour1()
     # detectBigComponents()
     
-    # * ( DETECT PCB & ZOOM ) --> ( DETECT BIG COMPONENTS & FEATURE MATCHING )
+    # * ( DETECT PCB & ZOOM ) --> ( DETECT DARK/BRIGHT COMPONENTS )
     img1 = cv2.imread("./assets/images/pcb-stitching1.png")
     img2 = cv2.imread("./assets/images/pcb-stitching2.png")
     zoomed1, contours1 = detectPCBandZoom(img1) 
     zoomed2, contours2 = detectPCBandZoom(img2)
     
-    detectBigComponents((zoomed1, contours1), (zoomed2, contours2))
+    dc1 = detectDarkComponents((zoomed1, contours1))
+    dc2 = detectDarkComponents((zoomed2, contours2))
+    
+    bc1 = detectBrightComponents((zoomed1, contours1))
+    bc2 = detectBrightComponents((zoomed2, contours2))
+    
+    # * ( GET COMPONENT AREA )
+    # getComponentArea(zoomed1,dc1)
+    # getComponentArea(zoomed1,bc1,200)
+    
+    getComponentArea(zoomed2,dc2)
+    getComponentArea(zoomed2,bc2,200)
+    
+    
+    # ---
+    # cv2.imshow("dc1",dc1)
+    # cv2.imshow("dc2",dc2)
+    # cv2.imshow("bc1",bc1)
+    # cv2.imshow("bc2",bc2)
+    
+    # cv2.waitKey()
+    # cv2.destroyAllWindows()
+    
+    
     
     
     
@@ -609,17 +735,24 @@ def main():
     # stitched = cv2.imread("./assets/images/stitch/pcb-stitching.png")
     # stroke1(stitched)
     
-    # dcheck1(stitched) # 
+
     
     # ! --- DONE ---    
     # * ALGORITHM 1: IMAGE STITCHING
     # stitched = stitch1(True, True)
     
-    # * DETECT PCB & ZOOM
+    # * ALGORITHM ? : CHECK PCB DIRECTION
     img1 = cv2.imread("./assets/images/pcb-stitching1.png")
     img2 = cv2.imread("./assets/images/pcb-stitching2.png")
-    zoomed1 = detectPCBandZoom(img1) 
-    zoomed2 = detectPCBandZoom(img2)
+    dcheck1(img1,img2) # 
+    
+    # * DETECT PCB & ZOOM
+    # zoomed1 = detectPCBandZoom(img1) 
+    # zoomed2 = detectPCBandZoom(img2)
+
+    # * DETECT BIG COMPONENTS (WIP)
+    
+    # * DETECT SMALL COMPONENTS (WIP)
 
     # * FEATURE MATCHING
     # feature1(zoomed1, zoomed2)
