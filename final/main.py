@@ -64,7 +64,7 @@ def findContours(contours, threshold=100):  # -> cv2.typing.MatLike:
             if len(approx) >= 12:
                 return approx
 
-def detectPCBandZoom(src, drawContour=False, showPlt=False) -> cv2.typing.MatLike: # PCB 외형 검출
+def detectPCBandZoom(src, drawContour=False, showplt=False) -> cv2.typing.MatLike: # PCB 외형 검출
 
     # detect big components on pcb
     
@@ -131,7 +131,7 @@ def detectPCBandZoom(src, drawContour=False, showPlt=False) -> cv2.typing.MatLik
     
     img21, img22, contours = mtd2(src)
     
-    if showPlt:
+    if showplt:
     
         plt.figure(figsize=(10,5))
         plt.subplot(131)
@@ -201,7 +201,7 @@ def detectBrightComponents(src, showplt=False):
     
     return comp13
 
-def getComponentArea(src, ctr, thres=1000):
+def getComponentArea(src, ctr, thres=1000, showplt=False):
     img = src
     img1 = img.copy()
     
@@ -209,6 +209,7 @@ def getComponentArea(src, ctr, thres=1000):
     contours, _ = cv2.findContours(ctr, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     comp_area = []
+    ret = []
     
     for c in contours:
             
@@ -224,18 +225,20 @@ def getComponentArea(src, ctr, thres=1000):
     
     for c in comp_area:
         x,y,w,h = cv2.boundingRect(c)
+        ret.append((x,x+w,y,y+h))
         
         img1 = cv2.rectangle(img1, (x, y), (x+w, y+h),  (0, 0, 255), 2)
     
-    
     # ---
 
-    cv2.imshow("src(origin)",img)
-    cv2.imshow("img1 (draw component rect)",img1)
+    if showplt:
+        cv2.imshow("src(origin)",img)
+        cv2.imshow("img1 (draw component rect)",img1)
+        
+        cv2.waitKey()
+        cv2.destroyAllWindows()
     
-    cv2.waitKey()
-    cv2.destroyAllWindows()
-    
+    return ret
     
 
 # * ORIGIN CODE OF BRIGHTs, DARKs
@@ -330,6 +333,55 @@ def detectComponents(src1, src2):
 
 def detectSmallComponents():
     pass
+
+def checkComponentPos(src, target, thres=0.9,showplt=False):
+    # src 기준, target component 영역 겹치는 수준 확인
+    # 겹치는 영역 평균 90% 이상이면 정상으로 판단
+    # print(src)
+    # print(target)
+    
+    tg = target[0].copy()
+    
+    for k,e in enumerate(target[1],start=1):
+        cv2.rectangle(tg,(e[0],e[2]),(e[1],e[3]),(0,0,255),2)
+        cv2.putText(tg, str(k), (e[0],e[2]+15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+        cv2.rectangle(target[0],(e[0],e[2]),(e[1],e[3]),(0,0,255),2)
+        cv2.putText(target[0], str(k), (e[0],e[2]+15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+    
+    
+    for k,e in enumerate(src[1], start=1):
+        cv2.rectangle(tg,(e[0],e[2]),(e[1],e[3]),(255,0,0),2)    
+        cv2.putText(tg, str(k), (e[0],e[2]+15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,0,0), 2)
+        cv2.rectangle(src[0],(e[0],e[2]),(e[1],e[3]),(255,0,0),2)
+        cv2.putText(src[0], str(k), (e[0],e[2]+15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,0,0), 2)
+    
+    # calculate intersection between src[1] and target[1]
+    
+    # for e in zip(target[1],src[1]):
+    #     print(e)
+    # inter = np.intersect1d(src[1], target[1])
+    # ratio = len(inter)/len(src[1])
+    
+    # print(f"inter: {inter}, ratio: {ratio}")
+    # if ratio > thres:
+        # return True
+    
+    if showplt:
+        plt.figure(figsize=(15,5))
+        plt.subplot(131)
+        plt.imshow(src[0])
+        plt.title("Golden")
+        plt.subplot(132)
+        plt.imshow(target[0])
+        plt.title("Target")
+        plt.subplot(133)
+        plt.imshow(tg)
+        plt.title("Intersection each component")
+        plt.tight_layout()
+        plt.show()
+    
+    return False
+    
 
 def contour1():
     img1 = cv2.imread("./assets/images/pcb-stitching1.png")
@@ -695,24 +747,11 @@ def main():
     # contour1()
     # detectBigComponents()
     
-    # * ( DETECT PCB & ZOOM ) --> ( DETECT DARK/BRIGHT COMPONENTS )
-    img1 = cv2.imread("./assets/images/pcb-stitching1.png")
-    img2 = cv2.imread("./assets/images/pcb-stitching2.png")
-    zoomed1, contours1 = detectPCBandZoom(img1) 
-    zoomed2, contours2 = detectPCBandZoom(img2)
     
-    dc1 = detectDarkComponents((zoomed1, contours1))
-    dc2 = detectDarkComponents((zoomed2, contours2))
+    # * CHECK FEATURE, POSITION OF EACH COMPONENT AREA 
+    # checkComponentFeatures((zoomed1, ca_dc1), (zoomed2, ca_dc2)) # return boolean
+    # checkComponentFeatures((zoomed1, ca_dc1), (zoomed2, ca_dc2)) # return booelan
     
-    bc1 = detectBrightComponents((zoomed1, contours1))
-    bc2 = detectBrightComponents((zoomed2, contours2))
-    
-    # * ( GET COMPONENT AREA )
-    # getComponentArea(zoomed1,dc1)
-    # getComponentArea(zoomed1,bc1,200)
-    
-    getComponentArea(zoomed2,dc2)
-    getComponentArea(zoomed2,bc2,200)
     
     
     # ---
@@ -739,7 +778,7 @@ def main():
     
     # ! --- DONE ---    
     # * ALGORITHM 1: IMAGE STITCHING
-    # stitched = stitch1(True, True)
+    stitched = stitch1(True, False)
     
     # * ALGORITHM ? : CHECK PCB DIRECTION
     img1 = cv2.imread("./assets/images/pcb-stitching1.png")
@@ -747,12 +786,28 @@ def main():
     dcheck1(img1,img2) # 
     
     # * DETECT PCB & ZOOM
-    # zoomed1 = detectPCBandZoom(img1) 
-    # zoomed2 = detectPCBandZoom(img2)
-
-    # * DETECT BIG COMPONENTS (WIP)
+    zoomed1 = detectPCBandZoom(img1,showplt=True) 
+    zoomed2 = detectPCBandZoom(img2,showplt=True)
     
-    # * DETECT SMALL COMPONENTS (WIP)
+    # * DETECT DARK/BRIGHT COMPONENTS
+    zoomed1, contours1 = detectPCBandZoom(img1,True) 
+    zoomed2, contours2 = detectPCBandZoom(img2,True)
+    
+    dc1 = detectDarkComponents((zoomed1, contours1), showplt=True)
+    dc2 = detectDarkComponents((zoomed2, contours2), showplt=True)
+    bc1 = detectBrightComponents((zoomed1, contours1), showplt=True)
+    bc2 = detectBrightComponents((zoomed2, contours2), showplt=True)
+    
+    # * ( GET COMPONENT AREA )    
+    ca_d1 = getComponentArea(zoomed1,dc1, showplt=True)
+    ca_b1 = getComponentArea(zoomed1,bc1,200, showplt=True)
+    ca_d2 = getComponentArea(zoomed2,dc2, showplt=True)
+    ca_b2 = getComponentArea(zoomed2,bc2,200, showplt=True)
+    
+    # * CHECK FEATURE, POSITION OF EACH COMPONENT AREA 
+    checkComponentPos((zoomed1, ca_d1), (zoomed2, ca_d2), showplt=True) # return boolean
+    # checkComponentPos((zoomed1, ca_b1), (zoomed2, ca_b2)) # return boolean
+    
 
     # * FEATURE MATCHING
     # feature1(zoomed1, zoomed2)
